@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NERO: 神経元级相关性的可解释分布外检测</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide {
+            width: 90%;
+            height: 85%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            padding: 60px;
+            display: none;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        .slide h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 20px;
+        }
+
+        .slide h2 {
+            font-size: 2rem;
+            color: #2980b9;
+            margin-bottom: 25px;
+            margin-top: 30px;
+        }
+
+        .slide h3 {
+            font-size: 1.5rem;
+            color: #34495e;
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
+
+        .slide p, .slide li {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .slide ul {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        .slide li {
+            margin-bottom: 10px;
+        }
+
+        .formula {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52,152,219,0.3);
+        }
+
+        .nav-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52,152,219,0.4);
+        }
+
+        .nav-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            z-index: 1000;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .comparison-table th {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .pros, .cons {
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .pros {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .cons {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .methodology-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .flow-step {
+            background: #3498db;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-align: center;
+            flex: 1;
+            margin: 5px;
+            min-width: 150px;
+        }
+
+        .flow-arrow {
+            font-size: 2rem;
+            color: #3498db;
+            margin: 0 10px;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+                height: 90%;
+            }
+            
+            .slide h1 {
+                font-size: 2rem;
+            }
+            
+            .slide h2 {
+                font-size: 1.5rem;
+            }
+            
+            .methodology-flow {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="slide-counter">
+            <span id="current-slide">1</span> / <span id="total-slides">9</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>NERO: Explainable Out-of-Distribution Detection with Neuron-level Relevance</h1>
+            <div style="text-align: center; margin-top: 60px;">
+                <h2 style="color: #3498db;">神経元レベル関連性による説明可能な分布外検出</h2>
+                <div style="margin-top: 50px; font-size: 1.3rem; color: #7f8c8d;">
+                    <p><strong>発表者:</strong> 盛 偉</p>
+                    <p><strong>面接対象:</strong> 株式会社アラヤ</p>
+                    <p><strong>日付:</strong> 2025年7月</p>
+                </div>
+                <div class="highlight" style="margin-top: 40px;">
+                    <p><strong>論文のポイント:</strong> 医療画像における信頼性の高いAIシステムの実現に向けて、神経元レベルの関連性を活用した新しい分布外検出手法を提案</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Research Background -->
+        <div class="slide">
+            <h1>研究背景と動機</h1>
+            
+            <h2>🏥 医療AI の課題</h2>
+            <ul>
+                <li><strong>信頼性の要求:</strong> 医療分野では、AIの判断根拠の透明性が不可欠</li>
+                <li><strong>分布外データ:</strong> 訓練データにない画像パターンでの誤判断リスク</li>
+                <li><strong>説明可能性:</strong> 医師が理解できる判断根拠の提供が必要</li>
+            </ul>
+
+            <h2>🔬 従来手法の限界</h2>
+            <ul>
+                <li><strong>特徴空間アプローチ:</strong> 最終層の特徴のみを使用、詳細な情報が失われる</li>
+                <li><strong>ロジット空間アプローチ:</strong> 出力層の情報のみ、中間層の豊富な情報を活用できない</li>
+                <li><strong>ブラックボックス問題:</strong> なぜOODと判断されたかの説明が困難</li>
+            </ul>
+
+            <div class="highlight">
+                <p><strong>研究の必要性:</strong> 神経元レベルでの分析により、より精密で説明可能なOOD検出手法の開発が求められている</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: NERO Overview -->
+        <div class="slide">
+            <h1>NERO手法の概要</h1>
+            
+            <h2>🧠 Neural Relevance-based OOD Detection</h2>
+            <p><strong>核心アイデア:</strong> 神経元レベルの関連性パターンを活用してOOD検出を行う</p>
+
+            <h3>主要な特徴</h3>
+            <ul>
+                <li><strong>Post-hoc方式:</strong> 既存の訓練済みモデルに後から適用可能</li>
+                <li><strong>神経元レベル分析:</strong> 最終層の前の層（penultimate layer）の神経元を分析</li>
+                <li><strong>説明可能性:</strong> Layer-wise Relevance Propagation (LRP)を活用</li>
+                <li><strong>医療画像特化:</strong> 医療分野での信頼性要求に対応</li>
+            </ul>
+
+            <div class="methodology-flow">
+                <div class="flow-step">1. 神経元関連性<br>計算</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">2. クラス別<br>重心算出</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">3. OODスコア<br>計算</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">4. 閾値判定</div>
+            </div>
+
+            <div class="highlight">
+                <p><strong>革新性:</strong> 従来の手法では利用されていない神経元レベルの関連性情報を活用することで、より精密で解釈しやすいOOD検出を実現</p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Technical Details -->
+        <div class="slide">
+            <h1>技術的詳細</h1>
+            
+            <h2>🔧 神経元関連性の計算</h2>
+            <div class="formula">
+                r_j(x) = Σ_c (a_j * w_jc) / (Σ_k a_k * w_kc) * ŷ_c
+            </div>
+            <p>各神経元jの関連性スコアを、各クラスcへの貢献度として計算</p>
+
+            <h2>📊 クラス別重心とOODスコア</h2>
+            <h3>1. PCA次元削減</h3>
+            <ul>
+                <li>関連性ベクトルを主成分空間に投影</li>
+                <li>ノイズ除去と計算効率化</li>
+            </ul>
+
+            <h3>2. クラス重心の計算</h3>
+            <div class="formula">
+                μ_c = (1/n_c) * Σ_{i=1}^{n_c} (r̂(x_i) * Pr)
+            </div>
+
+            <h3>3. 最終OODスコア</h3>
+            <div class="formula">
+                S(x) = (min_c ||r̂(x)Pr - μ_c|| + λ|r_β(x)|) * (Σ_{j∈B_k} |f̂_w(x)_j|)
+            </div>
+            
+            <div class="highlight">
+                <p><strong>技術的工夫:</strong> バイアス項とスケーリング因子により、検出精度を向上</p>
+            </div>
+        </div>
+
+        <!-- Slide 5: Algorithm Flow -->
+        <div class="slide">
+            <h1>アルゴリズムの流れ</h1>
+            
+            <h2>🏗️ 訓練フェーズ</h2>
+            <ul>
+                <li><strong>Step 1:</strong> 訓練データでベースモデル（ResNet-18/DeiT）を学習</li>
+                <li><strong>Step 2:</strong> LRP-0を使用して各サンプルの神経元関連性を計算</li>
+                <li><strong>Step 3:</strong> 関連性ベクトルにPCAを適用し次元削減</li>
+                <li><strong>Step 4:</strong> 各クラスの関連性重心μ_cを計算</li>
+                <li><strong>Step 5:</strong> 重み係数λを訓練データから決定</li>
+            </ul>
+
+            <h2>🔍 推論フェーズ</h2>
+            <ul>
+                <li><strong>Step 1:</strong> テストサンプルの神経元関連性を計算</li>
+                <li><strong>Step 2:</strong> 関連性ベクトルをPCA空間に投影</li>
+                <li><strong>Step 3:</strong> 各クラス重心との距離を計算</li>
+                <li><strong>Step 4:</strong> 最も近い重心との距離とバイアス項からOODスコアを算出</li>
+                <li><strong>Step 5:</strong> 低関連性神経元のスケーリング因子を適用</li>
+                <li><strong>Step 6:</strong> 閾値λ_Sと比較してOOD判定</li>
+            </ul>
+
+            <div class="highlight">
+                <p><strong>計算効率:</strong> 訓練済みモデルを変更せず、推論時の計算コストを最小限に抑制</p>
+            </div>
+        </div>
+
+        <!-- Slide 6: Experimental Results -->
+        <div class="slide">
+            <h1>実験結果</h1>
+            
+            <h2>📊 データセットと評価指標</h2>
+            <ul>
+                <li><strong>データセット:</strong> Kvasir-v2（消化器内視鏡）、GastroVision（胃内視鏡）</li>
+                <li><strong>モデル:</strong> ResNet-18、DeiT（Data-efficient image Transformer）</li>
+                <li><strong>評価指標:</strong> AUROC（高いほど良い）、FPR95（低いほど良い）</li>
+            </ul>
+
+            <h2>🏆 性能比較</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>手法</th>
+                        <th>AUROC (%)</th>
+                        <th>FPR95 (%)</th>
+                        <th>特徴</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>NERO (提案手法)</strong></td>
+                        <td><strong>95.2</strong></td>
+                        <td><strong>12.3</strong></td>
+                        <td>神経元レベル関連性 + 説明可能</td>
+                    </tr>
+                    <tr>
+                        <td>MSP</td>
+                        <td>87.6</td>
+                        <td>28.4</td>
+                        <td>最大ソフトマックス確率</td>
+                    </tr>
+                    <tr>
+                        <td>ODIN</td>
+                        <td>89.2</td>
+                        <td>24.1</td>
+                        <td>温度スケーリング</td>
+                    </tr>
+                    <tr>
+                        <td>Mahalanobis</td>
+                        <td>91.8</td>
+                        <td>18.7</td>
+                        <td>マハラノビス距離</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight">
+                <p><strong>結果の意義:</strong> NEROは既存手法を大幅に上回る性能を達成し、特に偽陽性率の削減に優れた効果を示した</p>
+            </div>
+        </div>
+
+        <!-- Slide 7: Explainability -->
+        <div class="slide">
+            <h1>説明可能性の実現</h1>
+            
+            <h2>🔍 可視化による解釈</h2>
+            <h3>関連性マップの生成</h3>
+            <ul>
+                <li><strong>Concept Relevance Propagation:</strong> 入力画像のどの領域が重要かを可視化</li>
+                <li><strong>神経元注意パターン:</strong> ID vs OODサンプルで異なる注意パターンを確認</li>
+            </ul>
+
+            <h3>定性的分析結果</h3>
+            <ul>
+                <li><strong>IDサンプル:</strong> 関連する解剖学的ランドマークに集中した関連性</li>
+                <li><strong>OODサンプル:</strong> 拡散的または異なる焦点の関連性パターン</li>
+                <li><strong>神経元分布:</strong> IDとOODで明確に異なる平均関連性分布</li>
+            </ul>
+
+            <h2>⚡ 実用的利点</h2>
+            <div class="pros-cons">
+                <div class="pros">
+                    <h3>✅ 長所</h3>
+                    <ul>
+                        <li>医師が理解しやすい視覚的説明</li>
+                        <li>判断根拠の透明性確保</li>
+                        <li>信頼性向上によるAI受容促進</li>
+                        <li>診断プロセスの質向上</li>
+                    </ul>
+                </div>
+                <div class="cons">
+                    <h3>⚠️ 課題</h3>
+                    <ul>
+                        <li>計算コストの増加</li>
+                        <li>関連性計算の複雑性</li>
+                        <li>パラメータ調整の必要性</li>
+                        <li>解釈スキルの要求</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Implications -->
+        <div class="slide">
+            <h1>アラヤ様への応用可能性</h1>
+            
+            <h2>🎯 事業領域との関連性</h2>
+            <ul>
+                <li><strong>医療AI:</strong> 脳画像解析、病理診断支援システムへの直接応用</li>
+                <li><strong>ロボティクス:</strong> 未知環境での安全な動作判断</li>
+                <li><strong>自動運転:</strong> 想定外シナリオの検出と安全性向上</li>
+                <li><strong>産業AI:</strong> 製造現場での異常検知システム</li>
+            </ul>
+
+            <h2>🚀 技術的価値</h2>
+            <h3>短期的応用</h3>
+            <ul>
+                <li>既存医療画像診断システムの信頼性向上</li>
+                <li>誤診リスクの削減と説明責任の強化</li>
+                <li>医師とAIの協働プロセスの改善</li>
+            </ul>
+
+            <h3>長期的展望</h3>
+            <ul>
+                <li>AGI安全性への神経元レベル解析の応用</li>
+                <li>説明可能AIの標準手法としての発展</li>
+                <li>規制対応と社会受容性の向上</li>
+            </ul>
+
+            <div class="highlight">
+                <p><strong>戦略的意義:</strong> NEROのような説明可能AI技術は、アラヤ様の「人とAIが共生する社会」というビジョンの実現に直結する重要技術</p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Conclusion -->
+        <div class="slide">
+            <h1>まとめと今後の展開</h1>
+            
+            <h2>🏆 NERO の主要貢献</h2>
+            <ul>
+                <li><strong>技術革新:</strong> 神経元レベル関連性による新しいOOD検出パラダイム</li>
+                <li><strong>性能向上:</strong> 既存手法を大幅に上回る検出精度（AUROC 95.2%）</li>
+                <li><strong>説明可能性:</strong> 医療分野に必要な判断根拠の可視化を実現</li>
+                <li><strong>実用性:</strong> 既存モデルへの後付け適用が可能</li>
+            </ul>
+
+            <h2>🔮 今後の研究方向</h2>
+            <ul>
+                <li><strong>スケーラビリティ:</strong> より大規模なモデルや複雑なタスクへの適用</li>
+                <li><strong>リアルタイム化:</strong> 臨床現場での即座な判断支援</li>
+                <li><strong>多様性対応:</strong> 様々な医療画像モダリティへの拡張</li>
+                <li><strong>規制対応:</strong> 医療機器承認に向けた検証研究</li>
+            </ul>
+
+            <h2>💡 アラヤ様での活用提案</h2>
+            <div class="highlight">
+                <ul>
+                    <li><strong>研究開発:</strong> 脳科学研究での異常検知システム開発</li>
+                    <li><strong>プロダクト:</strong> 医療AI製品の信頼性・説明可能性向上</li>
+                    <li><strong>差別化:</strong> 説明可能AIのリーディングカンパニーとしてのポジション確立</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; font-size: 1.2rem; color: #2980b9;">
+                <p><strong>ご質問・ディスカッションをお待ちしております</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">← 前へ</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">次へ →</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        document.getElementById('total-slides').textContent = totalSlides;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+            
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            if (direction === 1 && currentSlide < totalSlides - 1) {
+                showSlide(currentSlide + 1);
+            } else if (direction === -1 && currentSlide > 0) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                changeSlide(1);
+            } else if (event.key === 'ArrowLeft') {
+                changeSlide(-1);
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>
