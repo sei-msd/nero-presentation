@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NERO: 神経元级相关性的可解释分布外检测</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
     <style>
         * {
             margin: 0;
@@ -91,6 +101,7 @@
             font-family: 'Courier New', monospace;
             text-align: center;
             font-size: 1.2rem;
+            overflow-x: auto;
         }
 
         .highlight {
@@ -331,7 +342,7 @@
             
             <h2>🔧 神経元関連性の計算</h2>
             <div class="formula">
-                r_j(x) = Σ_c (a_j * w_jc) / (Σ_k a_k * w_kc) * ŷ_c
+                $$r_j^{(l)}(x) = \sum_k \frac{a_j^{(l)} \cdot w_{jk}^{(l,l+1)}}{\sum_i a_i^{(l)} \cdot w_{ik}^{(l,l+1)}} \cdot r_k^{(l+1)}(x)$$
             </div>
             <p>各神経元jの関連性スコアを、各クラスcへの貢献度として計算</p>
 
@@ -344,12 +355,12 @@
 
             <h3>2. クラス重心の計算</h3>
             <div class="formula">
-                μ_c = (1/n_c) * Σ_{i=1}^{n_c} (r̂(x_i) * Pr)
+                $$\mu_c = \frac{1}{n_c} \sum_{i=1}^{n_c} (\hat{r}(x_i) \cdot P_r)$$
             </div>
 
             <h3>3. 最終OODスコア</h3>
             <div class="formula">
-                S(x) = (min_c ||r̂(x)Pr - μ_c|| + λ|r_β(x)|) * (Σ_{j∈B_k} |f̂_w(x)_j|)
+                $$S(x) = \left(\min_c \|\hat{r}(x)P_r - \mu_c\|_2 + \lambda|r_\beta(x)|\right) \cdot \left(\sum_{j \in B_k} |\hat{f}_w(x)_j|\right)$$
             </div>
             
             <div class="highlight">
